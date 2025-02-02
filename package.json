@@ -1,0 +1,10 @@
+{
+  "name": "my-learning-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js",
+    "lint": "echo 'No real lint yet...' && exit 0",
+    "test": "echo 'No real tests yet...' && exit 0",
+    "audit": "echo 'No real audit yet...' && exit 0"
+  }
+}
