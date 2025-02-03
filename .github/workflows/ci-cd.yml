@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest  # Keep this since Node.js setup works well on Ubuntu
+    runs-on: ubuntu-20.04  # ✅ Use Ubuntu 20.04 instead of latest
 
     steps:
       - name: Checkout Code
@@ -35,16 +35,16 @@ jobs:
 
   build-and-push:
     needs: build-test
-    runs-on: amazonlinux  # ✅ Change base image to Amazon Linux 2
+    runs-on: ubuntu-20.04  # ✅ Use Ubuntu 20.04 for stability
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Dependencies (Amazon Linux)
+      - name: Install AWS CLI & Dependencies
         run: |
-          yum update -y
-          yum install -y aws-cli docker jq
+          sudo apt update -y
+          sudo apt install -y awscli docker jq
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
@@ -68,16 +68,16 @@ jobs:
 
   deploy:
     needs: build-and-push
-    runs-on: amazonlinux  # ✅ Change base image to Amazon Linux 2
+    runs-on: ubuntu-20.04  # ✅ Use Ubuntu 20.04 instead of latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Dependencies (Amazon Linux)
+      - name: Install AWS CLI & Dependencies
         run: |
-          yum update -y
-          yum install -y aws-cli kubectl jq
+          sudo apt update -y
+          sudo apt install -y awscli kubectl jq
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
