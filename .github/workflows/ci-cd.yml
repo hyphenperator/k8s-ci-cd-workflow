@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: ubuntu-20.04  # ✅ Use Ubuntu 20.04 instead of latest
+    runs-on: ubuntu-20.04  # ✅ Use Ubuntu 20.04 for stability
 
     steps:
       - name: Checkout Code
@@ -94,6 +94,12 @@ jobs:
           echo "Checking Kubernetes cluster connectivity..."
           aws eks --region us-east-1 update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
           kubectl get nodes
+
+      - name: Deploy Kubernetes Manifests  # ✅ Apply Kubernetes YAML before updating the image
+        run: |
+          kubectl apply -f k8s/node-app-deployment.yaml
+          kubectl apply -f k8s/node-app-service.yaml
+          kubectl apply -f k8s/ingress.yaml  # If using Ingress
 
       - name: Update Kubernetes Deployment
         run: |
