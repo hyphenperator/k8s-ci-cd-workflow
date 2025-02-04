@@ -86,8 +86,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1  # Explicitly hardcoded
 
-      - name: Update kubeconfig
-        run: aws eks --region us-east-1 update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+      - name: Verify GitHub Actions Can Access the New Cluster  # ✅ Step 5: Added verification step
+        run: |
+          echo "Checking AWS authentication..."
+          aws sts get-caller-identity
+
+          echo "Checking Kubernetes cluster connectivity..."
+          aws eks --region us-east-1 update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
+          kubectl get nodes
 
       - name: Update Kubernetes Deployment
         run: |
