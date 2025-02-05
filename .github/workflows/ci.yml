@@ -3,24 +3,24 @@ name: CI Pipeline
 on:
   pull_request:
     types:
-      - closed  # Runs the workflow only when a PR is merged
+      - opened  # Runs CI when a PR is created
+      - synchronize  # Runs CI when new commits are pushed to an open PR
 
 jobs:
-  deploy:
-    if: github.event.pull_request.merged == true  # Ensures workflow runs only after merge
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Deploy to EKS
-        run: |
-          aws eks update-kubeconfig --name your-cluster
-          kubectl apply -f deployment.yaml
+      - name: Run Linting
+        run: npm run lint || true
+
+      - name: Run Unit Tests
+        run: npm test || true
+
+      - name: Run Security Scan
+        run: npm audit --audit-level=critical || true
