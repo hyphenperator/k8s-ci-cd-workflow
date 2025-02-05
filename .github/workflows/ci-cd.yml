@@ -22,6 +22,15 @@ jobs:
           echo "AWS_ACCOUNT_ID: '${{ secrets.AWS_ACCOUNT_ID }}'"
           echo "EKS_CLUSTER_NAME: '${{ secrets.EKS_CLUSTER_NAME }}'"
 
+      - name: Validate AWS Secrets (STOP IF MISSING)
+        run: |
+          if [[ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" || -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || -z "${{ secrets.AWS_REGION }}" ]]; then
+            echo "❌ AWS Secrets are missing! Check GitHub Secrets."
+            exit 1
+          else
+            echo "✅ AWS Secrets are available."
+          fi
+
   build-test:
     needs: debug-secrets  # Ensure secrets are validated before proceeding
     if: github.repository == 'hyphenperator/k8s-ci-cd-workflow' && github.event.pull_request.merged == true
@@ -69,7 +78,7 @@ jobs:
           sudo apt update -y
           sudo apt install -y awscli docker jq
 
-      - name: Configure AWS Credentials (FORCED ENV VARS)
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
@@ -102,7 +111,7 @@ jobs:
           sudo apt update -y
           sudo apt install -y awscli kubectl jq
 
-      - name: Configure AWS Credentials (FORCED ENV VARS)
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
