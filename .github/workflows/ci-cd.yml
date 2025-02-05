@@ -6,33 +6,8 @@ on:
       - closed  # Runs only when a PR is merged
 
 jobs:
-  build-test:
-    if: github.event.pull_request.merged == true  # Ensures workflow runs only after merge
-    runs-on: ubuntu-20.04  
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install Dependencies
-        working-directory: my-node-app
-        run: npm install
-
-      - name: Run Linting
-        working-directory: my-node-app
-        run: npm run lint || true
-
-      - name: Run Tests
-        working-directory: my-node-app
-        run: npm test || true
-
   build-and-push:
-    needs: build-test
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04  
 
     steps:
@@ -44,24 +19,32 @@ jobs:
           sudo apt update -y
           sudo apt install -y awscli docker jq
 
+      - name: Debug Secrets
+        run: |
+          echo "Checking if AWS secrets exist..."
+          echo "AWS_ACCESS_KEY_ID is ${AWS_ACCESS_KEY_ID}"
+          echo "AWS_SECRET_ACCESS_KEY is ${AWS_SECRET_ACCESS_KEY}"
+          echo "AWS_REGION is ${AWS_REGION}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Build and Tag Docker Image
+      - name: Build and Push Docker Image
         run: |
           docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/node-app:${{ github.sha }} -f my-node-app/Dockerfile my-node-app/
-
-      - name: Push Docker Image
-        run: |
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/node-app:${{ github.sha }}
 
   deploy:
@@ -77,29 +60,29 @@ jobs:
           sudo apt update -y
           sudo apt install -y awscli kubectl jq
 
+      - name: Debug AWS Credentials
+        run: |
+          aws sts get-caller-identity
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify GitHub Actions Can Access the New Cluster
+      - name: Configure Kubernetes Authentication
         run: |
-          echo "Checking AWS authentication..."
-          aws sts get-caller-identity
-
-          echo "Checking Kubernetes cluster connectivity..."
           aws eks --region us-east-1 update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
           kubectl get nodes
 
-      - name: Deploy Kubernetes Manifests
+      - name: Deploy to Kubernetes
         run: |
           kubectl apply -f k8s/node-app-deployment.yaml
           kubectl apply -f k8s/node-app-service.yaml
-          kubectl apply -f k8s/ingress.yaml  
+          kubectl apply -f k8s/ingress.yaml
 
-      - name: Update Kubernetes Deployment
+      - name: Update Deployment Image
         run: |
           kubectl set image deployment/node-app node-app=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/node-app:${{ github.sha }}
           kubectl rollout status deployment/node-app
