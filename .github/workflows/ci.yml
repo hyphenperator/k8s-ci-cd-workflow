@@ -14,13 +14,17 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Dependencies
+        working-directory: my-node-app  # ✅ Change to correct directory
         run: npm install
 
       - name: Run Linting
+        working-directory: my-node-app
         run: npm run lint || true
 
       - name: Run Unit Tests
+        working-directory: my-node-app
         run: npm test || true
 
       - name: Run Security Scan
+        working-directory: my-node-app
         run: npm audit --audit-level=critical || true
